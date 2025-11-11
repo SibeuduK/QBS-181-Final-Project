@@ -1,0 +1,27 @@
+---
+title: "TheDruggies"
+author: "Kenechukwu Sibeudu"
+date: "2025-11-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("readxl")  
+library(readxl)
+library(tidyverse)
+
+```
+
+```{r}
+df <- read_excel("Downloads/CLEANING DATA DRUG.xlsx", sheet = "DATA_FINAL_ANALYSIS")
+head(df)
+```
+
+```{r}
+
+```
+
