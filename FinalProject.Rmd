@@ -16,120 +16,67 @@ library(ggpubr)
 ```
 
 ```{r}
-df <- read_excel("CLEANING DATA DRUG.xlsx", sheet = "DATA_FINAL_ANALYSIS")
-head(df)
+ddata <- read_excel("CLEANING DATA DRUG.xlsx", sheet = "DATA_FINAL_ANALYSIS")
+head(ddata)
 ```
 ```{r}
 legal_drugs <- c("Caffeine_Use", "Nicotine_Use", "Alcohol_Use", "Chocolate_Use")
 illegal_drugs <- c("Cocaine_Use", "Ketamine_Use", "Heroin_Use", "LSD_Use")
 
 # Gather legal and illegal drugs together with a flag
-df_long <- df %>%
+ddata_long <- ddata %>%
   pivot_longer(cols = all_of(c(legal_drugs, illegal_drugs)),
                names_to = "Drug",
                values_to = "Usage") %>%
   mutate(Category = ifelse(Drug %in% legal_drugs, "Legal", "Illegal"))
-```
-
-```{r}
-# Plot personality trait by ussage and separate by Legal/Illegal category
-neuro_boxplot <- ggplot(df_long, aes(x = Usage, y = Neuroticism, fill = Usage)) +
-                  geom_boxplot() +
-                  facet_wrap(~Category) +
-                  scale_fill_manual(values = c("#BCB8F0", "#E9006D")) +
-                  labs(x = "",
-                       y = "Neuroticism Score",
-                       fill = "Usage") +
-                  guides(fill = "none") +
-                  theme_classic() +
-                  theme(plot.title = element_text(hjust = 0.5))
-
-extraversion_boxplot <- ggplot(df_long, aes(x = Usage, y = Extraversion, fill = Usage)) +
-  geom_boxplot() +
-  facet_wrap(~Category) +
-  scale_fill_manual(values = c("#BCB8F0", "#E9006D")) +
-  labs(x = "",
-       y = "Extraversion Score",
-       fill = "Usage") +
-  guides(fill = "none") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-Openness_boxplot <- ggplot(df_long, aes(x = Usage, y = Openness, fill = Usage)) +
-  geom_boxplot() +
-  facet_wrap(~Category) +
-  scale_fill_manual(values = c("#BCB8F0", "#E9006D")) +
-  labs(x = "",
-       y = "Openness Score",
-       fill = "Usage") +
-  guides(fill = "none") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-Agreeableness_boxplot <- ggplot(df_long, aes(x = Usage, y = Agreeableness, fill = Usage)) +
-  geom_boxplot() +
-  facet_wrap(~Category) +
-  scale_fill_manual(values = c("#BCB8F0", "#E9006D")) +
-  labs(x = "",
-       y = "Agreeableness Score",
-       fill = "Usage") +
-  guides(fill = "none") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
-
-combined_plot <- ggarrange(neuro_boxplot, extraversion_boxplot, Openness_boxplot, Agreeableness_boxplot,
-          ncol = 2, nrow = 2)
-
-# Add one common title above all plots
-annotate_figure(combined_plot,
-                top = text_grob("Personality Traits by Drug Use for Legal and Illegal Drugs", 
-                                face = "bold", size = 14)) 
+ddata_long
 ```
 
 
-
 ```{r}
-# Plot personality trait by ussage and separate by Legal/Illegal category
-Consc_boxplot <- ggplot(df_long, aes(x = Usage, y = Conscientiousness, fill = Usage)) +
-  geom_boxplot() +
-  facet_wrap(~Category) +
-  scale_fill_manual(values = c("#BCB8F0", "#F54B9A")) +
-  labs(x = "",
-       y = "Conscientiousness Score",
-       fill = "Usage") +
-  guides(fill = "none") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
+library(ggplot2)
+library(ggpubr)
 
-Impulsivity_boxplot <- ggplot(df_long, aes(x = Usage, y = Impulsivity, fill = Usage)) +
-  geom_boxplot() +
-  facet_wrap(~Category) +
-  scale_fill_manual(values = c("#BCB8F0", "#E9006D")) +
-  labs(x = "",
-       y = "Impulsivity Score",
-       fill = "Usage") +
-  guides(fill = "none") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
+# Function to plot personality trait by ussage and separate by Legal/Illegal category
+plot_personality_trait <- function(data, trait, fill_colors = c("#BCB8F0", "#E9006D")) {
+  ggplot(data, aes_string(x = "Usage", y = trait, fill = "Usage")) +
+    geom_boxplot() +
+    facet_wrap(~Category) +
+    scale_fill_manual(values = fill_colors) +
+    labs(
+      x = "",
+      y = paste(trait, "Score"),
+      fill = "Usage"
+    ) +
+    guides(fill = "none") +
+    theme_classic()
+}
 
-SS_boxplot <- ggplot(df_long, aes(x = Usage, y = Sensation_Seeking, fill = Usage)) +
-  geom_boxplot() +
-  facet_wrap(~Category) +
-  scale_fill_manual(values = c("#BCB8F0", "#E9006D")) +
-  labs(x = "",
-       y = "Sensation Seeking Score",
-       fill = "Usage") +
-  guides(fill = "none") +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5))
+# Create the plots
+neuro_boxplot <- plot_personality_trait(ddata_long, "Neuroticism")
+extraversion_boxplot <- plot_personality_trait(ddata_long, "Extraversion")
+openness_boxplot <- plot_personality_trait(ddata_long, "Openness")
+agreeableness_boxplot <- plot_personality_trait(ddata_long, "Agreeableness")
+consc_boxplot <- plot_personality_trait(ddata_long, "Conscientiousness")
+impulsivity_boxplot <- plot_personality_trait(ddata_long, "Impulsivity")
+SS_boxplot <- plot_personality_trait(ddata_long, "Sensation_Seeking")
 
-combined_plot2 <- ggarrange(Consc_boxplot, Impulsivity_boxplot, SS_boxplot,
+
+# Arrange the plots in a 2x2 grid
+combined_plot <- ggarrange(neuro_boxplot, extraversion_boxplot, openness_boxplot, agreeableness_boxplot,
+                           ncol = 2, nrow = 2)
+combined_plot2 <- ggarrange(consc_boxplot, impulsivity_boxplot, SS_boxplot,
           ncol = 2, nrow = 2)
 
+
 # Add one common title above all plots
-annotate_figure(combined_plot2,
-                top = text_grob("Personality Traits by Drug Use for Legal and Illegal Drugs", 
-                                face = "bold", size = 14)) 
+annotate_figure(combined_plot, 
+                top = text_grob("Personality Traits by Drug Use for Legal and Illegal Drugs",
+                                face = "bold", size = 14))
+
+annotate_figure(combined_plot2, 
+                top = text_grob("Personality Traits by Drug Use for Legal and Illegal Drugs",
+                                face = "bold", size = 14))
 ```
 
 ```{r}
