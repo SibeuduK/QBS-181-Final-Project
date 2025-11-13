@@ -132,3 +132,118 @@ annotate_figure(combined_plot2,
                                 face = "bold", size = 14)) 
 ```
 
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(pheatmap)
+
+#data
+ddata <- read_excel(
+  "CLEANING DATA DRUG.xlsx",
+  sheet = "DATA_FINAL_ANALYSIS"
+)
+
+# age + ed
+ddata$AgeEdu <- paste(ddata$Age_Group, ddata$Education_Level_Final, sep = " / ")
+
+# drugs
+keep_drugs <- c(
+  "Caffeine_Use",
+  "Nicotine_Use",
+  "Alcohol_Use",
+  "Chocolate_Use",
+  "Cocaine_Use",
+  "Ketamine_Use",
+  "Heroin_Use",
+  "LSD_Use"
+)
+
+d_long <- ddata %>%
+  pivot_longer(
+    cols = all_of(keep_drugs),
+    names_to  = "Drug",
+    values_to = "Use"
+  ) %>%
+  filter(Use == "User")
+
+#clean labels 
+pretty_drug_labels <- function(mat) {
+  labs <- colnames(mat)
+  labs <- gsub("_Use$", "", labs)
+  labs <- gsub("_", " ", labs)
+  labs
+}
+
+# color
+overall_colors <- colorRampPalette(c("white", "#b38bff"))(50)   
+male_colors    <- colorRampPalette(c("white", "#6bb6ff"))(50)  
+female_colors  <- colorRampPalette(c("white", "#ff8ac6"))(50)   
+
+
+# overall heatmap
+all_tab <- d_long %>%
+  count(AgeEdu, Drug, name = "Users") %>%
+  pivot_wider(
+    names_from  = Drug,
+    values_from = Users,
+    values_fill = 0
+  )
+
+mat_all <- as.matrix(all_tab[, -1])
+rownames(mat_all) <- all_tab$AgeEdu
+
+pheatmap(
+  mat_all,
+  main = "Drug Use by Age + Education (All)",
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  labels_col = pretty_drug_labels(mat_all),
+  color = overall_colors
+)
+
+#male heatmap 
+male_tab <- d_long %>%
+  filter(Gender == "Male") %>%
+  count(AgeEdu, Drug, name = "Users") %>%
+  pivot_wider(
+    names_from  = Drug,
+    values_from = Users,
+    values_fill = 0
+  )
+
+mat_male <- as.matrix(male_tab[, -1])
+rownames(mat_male) <- male_tab$AgeEdu
+
+pheatmap(
+  mat_male,
+  main = "Drug Use by Age + Education (Male)",
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  labels_col = pretty_drug_labels(mat_male),
+  color = male_colors
+)
+
+# female heatmap
+female_tab <- d_long %>%
+  filter(Gender == "Female") %>%
+  count(AgeEdu, Drug, name = "Users") %>%
+  pivot_wider(
+    names_from  = Drug,
+    values_from = Users,
+    values_fill = 0
+  )
+
+mat_female <- as.matrix(female_tab[, -1])
+rownames(mat_female) <- female_tab$AgeEdu
+
+pheatmap(
+  mat_female,
+  main = "Drug Use by Age + Education (Female)",
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  labels_col = pretty_drug_labels(mat_female),
+  color = female_colors
+)
+
+```
