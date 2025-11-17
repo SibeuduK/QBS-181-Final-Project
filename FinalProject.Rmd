@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #install.packages("readxl")  
 library(readxl)
 library(ggpubr)
+library(tidyverse)
 ```
 
 ```{r}
@@ -192,5 +193,71 @@ pheatmap(
   labels_col = pretty_drug_labels(mat_female),
   color = female_colors
 )
+
+```
+```{r}
+# drug categories
+legal_drugs <- c("Alcohol_Use", "Caffeine_Use", "Chocolate_Use", "Nicotine_Use")
+illegal_drugs <- c("Cocaine_Use", "Heroin_Use", "LSD_Use", "Ketamine_Use")
+all_drugs <- c(legal_drugs, illegal_drugs)
+
+
+
+# reshape data to long format
+data_long <- ddata %>%
+  pivot_longer(
+    cols = all_of(all_drugs),
+    names_to = "Drug",
+    values_to = "Use_Status"
+  ) %>%
+  mutate(
+    Drug = str_remove(Drug, "_Use")  # remove "_Use" from drug names
+  )
+
+
+
+# reorder education
+data_long$Education_Level_Final <- factor(
+  data_long$Education_Level_Final,
+  levels = c("Low education", "Medium education", "High education")
+)
+
+
+# Histogram by Gender
+ggplot(data_long, aes(x = Drug, fill = Use_Status)) +
+  geom_bar(position = "dodge", color = "black") +
+  facet_wrap(~ Gender) +
+  scale_fill_manual(
+    values = c("User" = "#E9006D", "Non-User" = "#BCB8F0")  # custom colors
+  ) +
+  labs(title = "Drug Use by Gender",
+       x = "Drug Type", y = "Number of Individuals", fill = "Use Status") +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Histogram by Education
+ggplot(data_long, aes(x = Drug, fill = Use_Status)) +
+  geom_bar(position = "dodge", color = "black") +
+  facet_wrap(~ Education_Level_Final) +
+  scale_fill_manual(
+    values = c("User" = "#E9006D", "Non-User" = "#BCB8F0")  # custom colors
+  ) +
+  labs(title = "Drug Use by Education Level",
+       x = "Drug Type", y = "Number of Individuals",
+       fill = "Use Status") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Histogram by Age Group
+ggplot(data_long, aes(x = Drug, fill = Use_Status)) +
+  geom_bar(position = "dodge", color = "black") +
+  facet_wrap(~ Age_Group) +
+  scale_fill_manual(
+    values = c("User" = "#E9006D", "Non-User" = "#BCB8F0")  # custom colors
+  ) +
+  labs(title = "Drug Use by Age Group",
+       x = "Drug Type", y = "Number of Individuals",  fill = "Use Status") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
