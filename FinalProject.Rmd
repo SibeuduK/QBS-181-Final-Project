@@ -261,3 +261,156 @@ ggplot(data_long, aes(x = Drug, fill = Use_Status)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
+
+```{r}
+library(shiny)
+library(shinydashboard)
+library(tidyverse)
+library(plotly)
+
+# Example personality traits
+personality_traits <- c("Neuroticism","Extraversion","Openness","Agreeableness")
+
+ui <- dashboardPage(
+  skin = "black",
+  
+ dashboardHeader(
+  title = tags$div(
+    style="background: linear-gradient(to right, #E9006D, #BCB8F0);
+           padding: 5px 10px; 
+           font-size: 16px;
+           white-space: normal;
+           line-height: 1.2;", 
+    "Drug Use & Personality Dashboard"
+  )
+),
+  
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Overview", tabName = "overview", icon = icon("dashboard")),
+      menuItem("Histogram", tabName = "hist", icon = icon("chart-bar")),
+      menuItem("Boxplot", tabName = "box", icon = icon("box"))
+    ),
+    hr(),
+    
+    h4("Histogram Controls"),
+    selectInput("facet_var", "Facet by:", choices = c("Gender","Education_Level_Final","Age_Group"), selected = "Gender"),
+    checkboxGroupInput("drug_type_filter_hist", "Drug Type:", choices = c("Legal","Illegal"), selected = c("Legal","Illegal")),
+    
+    hr(),
+    h4("Boxplot Controls"),
+    selectInput("trait", "Personality Trait:", choices = personality_traits, selected = "Neuroticism"),
+    checkboxGroupInput("drug_type_filter_box", "Drug Type:", choices = c("Legal","Illegal"), selected = c("Legal","Illegal"))
+  ),
+  
+  dashboardBody(
+    # Custom CSS
+    tags$head(tags$style(HTML("
+      /* Page background */
+      .content-wrapper, .right-side {background-color: #f4f6f8;}
+      /* Sidebar background */
+      .main-sidebar {background-color: #2c3e50 !important;}
+      /* Sidebar menu text */
+      .sidebar-menu li a {color: #ecf0f1 !important; font-weight:bold;}
+      /* Active menu item */
+      .sidebar-menu li.active a {background-color: #E9006D !important; color: #fff !important;}
+      /* Info boxes */
+      .small-box {box-shadow: 2px 2px 10px rgba(0,0,0,0.1);}
+      /* Header gradient title */
+      .main-header .logo {background: linear-gradient(to right, #E9006D, #BCB8F0) !important; color:#fff !important; font-weight:bold;}
+    "))),
+    
+    tabItems(
+      # Overview tab with value boxes
+      tabItem(tabName = "overview",
+              fluidRow(
+                valueBoxOutput("total_users"),
+                valueBoxOutput("total_nonusers"),
+                valueBoxOutput("legal_vs_illegal")
+              )
+      ),
+      
+      # Histogram tab
+      tabItem(tabName = "hist",
+              fluidRow(
+                box(title="Drug Use Histogram", width=12, status="primary", solidHeader=TRUE, plotlyOutput("hist_plot"))
+              )
+      ),
+      
+      # Boxplot tab
+      tabItem(tabName = "box",
+              fluidRow(
+                box(title="Personality Traits Boxplot", width=12, status="primary", solidHeader=TRUE, plotlyOutput("box_plot"))
+              )
+      )
+    )
+  )
+)
+
+server <- function(input, output) {
+  
+  # Example summary statistics
+  output$total_users <- renderValueBox({
+    valueBox(
+      value = "1234", subtitle = "Total Users", icon = icon("users"), color = "red"
+    )
+  })
+  output$total_nonusers <- renderValueBox({
+    valueBox(
+      value = "567", subtitle = "Total Non-Users", icon = icon("user-slash"), color = "blue"
+    )
+  })
+  output$legal_vs_illegal <- renderValueBox({
+    valueBox(
+      value = "60% Legal", subtitle = "Drug Category", icon = icon("balance-scale"), color = "purple"
+    )
+  })
+  
+  # Histogram filter
+  filtered_hist <- reactive({
+    data_long_hist %>% filter(Drug_Type %in% input$drug_type_filter_hist)
+  })
+  
+  output$hist_plot <- renderPlotly({
+    p <- ggplot(filtered_hist(), aes(x = Drug, fill = Use_Status)) +
+      geom_bar(position="dodge", color="black") +
+      facet_wrap(as.formula(paste("~", input$facet_var))) +
+      scale_fill_manual(values=c("User"="#E9006D","Non-User"="#BCB8F0")) +
+      labs(x = "Drug Type", y = "Number of Individuals", fill = "Use Status") +
+      theme_minimal(base_size=14) +
+      theme(
+        plot.background = element_rect(fill="#f4f6f8", color=NA),
+        panel.background = element_rect(fill="#ffffff", color=NA),
+        strip.background = element_rect(fill="#E9006D", color=NA),
+        strip.text = element_text(color="#ffffff", face="bold"),
+        axis.text.x = element_text(angle=45, hjust=1)
+      )
+    ggplotly(p, tooltip=c("x","y","fill"))
+  })
+  
+  # Boxplot filter
+  filtered_box <- reactive({
+    data_long_box %>% filter(Category %in% input$drug_type_filter_box)
+  })
+  
+  output$box_plot <- renderPlotly({
+    y_var <- sym(input$trait)
+    p <- ggplot(filtered_box(), aes(x=Usage, y=!!y_var, fill=Usage)) +
+      geom_boxplot() +
+      facet_wrap(~Category) +
+      scale_fill_manual(values=c("User"="#E9006D","Non-User"="#BCB8F0")) +
+      labs(x="", y=paste(input$trait,"Score"), fill="Usage") +
+      theme_minimal(base_size=14) +
+      theme(
+        plot.background = element_rect(fill="#f4f6f8", color=NA),
+        panel.background = element_rect(fill="#ffffff", color=NA),
+        strip.background = element_rect(fill="#E9006D", color=NA),
+        strip.text = element_text(color="#ffffff", face="bold")
+      )
+    ggplotly(p, tooltip=c("x","y","fill"))
+  })
+}
+
+shinyApp(ui, server)
+
+```
