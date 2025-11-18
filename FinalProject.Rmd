@@ -262,6 +262,7 @@ ggplot(data_long, aes(x = Drug, fill = Use_Status)) +
 
 ```
 
+
 ```{r}
 
 library(shiny)
@@ -498,16 +499,24 @@ output$pie_dist <- renderPlotly({
   })
   
  output$hist_plot <- renderPlotly({
-  df <- filtered_hist()
-  p <- ggplot(df, aes(x=Drug, fill=Use_Status)) +
+  df <- filtered_hist() %>%
+    mutate(
+      Use_Status_Clean = gsub("_", " ", Use_Status),   # remove underscore
+      Use_Status_Clean = gsub("-", " ", Use_Status_Clean),  # also remove any hyphens
+      Use_Status_Clean = stringr::str_to_title(Use_Status_Clean)  # make nice case
+    )
+
+  p <- ggplot(df, aes(x = Drug, fill = Use_Status_Clean)) +
     geom_bar(position="dodge", color="black") +
     facet_wrap(as.formula(paste("~", input$facet_var))) +
-    scale_fill_manual(values=c("User"="#E9006D","Non-User"="#BCB8F0")) +
+    scale_fill_manual(values=c("User"="#E9006D","Non User"="#BCB8F0")) +
     theme_minimal(14) +
     theme(axis.text.x = element_text(angle=45, hjust=1)) +
-    labs(x = "Drug", y = "Count")   # <-- Capital C here
+    labs(x = "Drug", y = "Count", fill = "Use Status")
+
   ggplotly(p)
 })
+
 
   
   #  BOXPLOT 
