@@ -38,15 +38,17 @@ ddata_long
 library(ggplot2)
 library(ggpubr)
 
-# Function to plot personality trait by ussage and separate by Legal/Illegal category
+# Function to plot personality trait by usage and separate by Legal/Illegal category
 plot_personality_trait <- function(data, trait, fill_colors = c("#BCB8F0", "#E9006D")) {
+  y_label <- paste(gsub("_", " ", trait), "Score")
+  
   ggplot(data, aes_string(x = "Usage", y = trait, fill = "Usage")) +
     geom_boxplot() +
     facet_wrap(~Category) +
     scale_fill_manual(values = fill_colors) +
     labs(
       x = "",
-      y = paste(trait, "Score"),
+      y = y_label,
       fill = "Usage"
     ) +
     guides(fill = "none") +
