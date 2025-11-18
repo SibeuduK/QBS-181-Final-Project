@@ -1,5 +1,5 @@
-#Final Project: Personality Traits and Drug Use Patterns in the UCI Drug Consumption Dataset
---- 
+# Final Project: Personality Traits and Drug Use Patterns in the UCI Drug Consumption Dataset
+
 
 ##Project Overview
 --- 
