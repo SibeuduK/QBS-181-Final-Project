@@ -1,8 +1,8 @@
 # Final Project: Personality Traits and Drug Use Patterns in the UCI Drug Consumption Dataset
 
 
-##Project Overview
-This project examines associations between demographic characteristics, personality traits (Big Five, impulsivity, sensation seeking), and legal/illegal drug use using the UCI Machine Learning Repository’s “Drug Consumption (Quantified)” dataset.
+## Project Overview
+This project examines associations between demographic characteristics, personality traits (Big Five, impulsivity, sensation seeking), and legal/illegal drug use using the UCI ML Repository’s “Drug Consumption (Quantified)” dataset.
 
 Our goals were to:
 
@@ -16,7 +16,7 @@ Produce an interactive visualization dashboard using R Shiny
 
 This README documents the entire data-wrangling and analysis pipeline so that any new user can fully reproduce the project.
 
-##Data Sources
+## Data Sources
 Raw Dataset
 
 Drug Consumption (Quantified) — UCI Machine Learning Repository
@@ -38,7 +38,7 @@ Drug use variables
 
 Raw categorical encodings that required recoding
 
-##Repository Structure
+## Repository Structure
 project/
 │
 ├── data/
@@ -57,7 +57,7 @@ project/
 │
 └── README.md
 
-##Software & Packages
+## Software & Packages
 R Version
 
 R version 4.x.x
@@ -80,11 +80,11 @@ Excel (preliminary cleaning)
 Python (format conversion only)
 
 
-##Data Wrangling Pipeline
+## Data Wrangling Pipeline
 
 This section follows the Berkeley “How to Write Good Documentation” structure and includes all steps required for full reproducibility.
 
-###Excel Pre-Cleaning
+### Excel Pre-Cleaning
 
 Performed in CLEANING DATA DRUG.xlsx:
 
@@ -104,7 +104,7 @@ Checked for impossible values or malformed fields
 
 This produced a consistent dataset that could be imported into R cleanly.
 
-###Importing Data into R
+### Importing Data into R
 
 Done in FinalProject.Rmd:
 
@@ -113,9 +113,9 @@ library(dplyr)
 
 raw <- read_excel("data/CLEANING DATA DRUG.xlsx")
 
-###Cleaning Pipeline in R (tidyverse)
+### Cleaning Pipeline in R (tidyverse)
 
-####Handling Missing Data
+#### Handling Missing Data
 
 Identified missing values
 
@@ -123,7 +123,7 @@ Converted placeholders (e.g., empty cells, “NA”) into proper NA
 
 Verified that no drug-use variable contained impossible values
 
-####Recoding Variables
+#### Recoding Variables
 
 Personality trait scores converted into Low / Medium / High categories
 
@@ -137,7 +137,7 @@ Any legal drug use = caffeine OR nicotine OR alcohol OR chocolate
 
 Any illegal drug use = cocaine OR ketamine OR heroin OR LSD
 
-####Creating Final Analysis Dataset
+#### Creating Final Analysis Dataset
 
 Selected only required variables
 
@@ -145,7 +145,7 @@ Ensured factors were properly ordered
 
 Exported to /output/cleaned_dataset.csv
 
-###Table Creation
+### Table Creation
 Table 1 — Demographic & Personality Profile by Gender
 
 Generated using tableone in TABLES CODING.Rmd
@@ -174,7 +174,7 @@ Cross-tabulations
 
 Chi-square or Fisher’s exact tests when needed
 
-###Regression Modeling
+### Regression Modeling
 
 Performed in FinalProject.Rmd:
 
@@ -194,7 +194,7 @@ Reference group = Low
 
 Output ORs + 95% CI extracted into Table 3
 
-###Step 6 — Interactive Dashboard
+### Interactive Dashboard
 
 In RShiny.Rmd:
 
@@ -212,7 +212,7 @@ Run with:
 
 shiny::runApp("RShiny.Rmd")
 
-##Reproducibility Guide (Run Order)
+## Reproducibility Guide (Run Order)
 
 A new user can fully reproduce the pipeline by following:
 
@@ -228,9 +228,9 @@ Open RShiny.Rmd and run the dashboard
 
 The cleaned dataset and tables will appear in /output.
 
-##Contributors
+## Contributors
 
 Tanya Budhiraja
-Ceasar 
-Kenechukwu 
+Cesar Alas
+Kenechukwu Sibeudu 
 Cameron Diehl
