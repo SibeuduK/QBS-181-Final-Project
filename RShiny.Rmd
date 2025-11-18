@@ -1,0 +1,320 @@
+---
+title: "rshiny"
+output: html_document
+date: "2025-11-18"
+---
+
+
+```{r}
+# Loaded necessary libraries for UI, data manipulation, plotting, and heatmaps
+library(shiny)
+library(shinydashboard)
+library(tidyverse)
+library(plotly)
+library(readxl)
+library(pheatmap)
+
+# Read cleaned dataset from Excel
+ddata <- read_excel("CLEANING DATA DRUG.xlsx", sheet = "DATA_FINAL_ANALYSIS")
+
+
+personality_traits <- c("Neuroticism","Extraversion","Openness","Agreeableness",
+                        "Conscientiousness","Impulsivity","Sensation_Seeking")
+
+drug_cols <- c(
+  "Caffeine_Use", "Nicotine_Use", "Alcohol_Use", "Chocolate_Use",
+  "Cocaine_Use", "Ketamine_Use", "Heroin_Use", "LSD_Use"
+)
+
+# convert drug labels into uppercase, prettier labels for heatmaps
+pretty_drug_labels <- function(mat) {
+  labels <- colnames(mat)
+  labels <- gsub("_", " ", labels)
+  toupper(labels)
+}
+
+# create heatmap matrix by Age+Education and drug use counts
+make_heat_matrix <- function(df) {
+  tab <- df %>%
+    count(AgeEdu, Drug, name = "Users") %>%
+    pivot_wider(names_from = Drug, values_from = Users, values_fill = 0)
+  
+  mat <- as.matrix(tab[, -1])
+  rownames(mat) <- tab$AgeEdu
+  mat
+}
+
+# Convert data to long format for mapping drug use
+ddata_long <- ddata %>%
+  pivot_longer(cols = all_of(drug_cols),
+               names_to = "Drug",
+               values_to = "Use_Status") %>%
+  mutate(
+    Drug = gsub("_Use$", "", Drug),
+    Drug_Type = ifelse(Drug %in% c("Caffeine","Nicotine","Alcohol","Chocolate"),
+                       "Legal", "Illegal")
+  )
+
+# Add Age+Education column for heatmap
+d_long <- ddata_long %>%
+  mutate(AgeEdu = paste(Age_Group, Education_Level_Final, sep = "_"))
+
+# Heatmap matrices
+mat_all    <- make_heat_matrix(d_long)
+mat_male   <- make_heat_matrix(filter(d_long, Gender == "Male"))
+mat_female <- make_heat_matrix(filter(d_long, Gender == "Female"))
+
+# Color palettes
+overall_colors <- colorRampPalette(c("#FFFFFF", "#b38bff"))(100)
+male_colors    <- colorRampPalette(c("#FFFFFF", "#6bb6ff"))(100)
+female_colors  <- colorRampPalette(c("#FFFFFF", "#ff8ac6"))(100)
+
+# Dropdown choices for distribution plots
+dist_choices <- c(
+  "Gender" = "Gender",
+  "Age Group" = "Age_Group",
+  "Education Level" = "Education_Level_Final"
+)
+
+facet_choices <- c(
+  "Gender" = "Gender",
+  "Age Group" = "Age_Group",
+  "Education Level" = "Education_Level_Final"
+)
+
+
+# UI
+
+ui <- dashboardPage(
+  skin = "black",
+  
+  dashboardHeader(
+    title = tags$div(
+      style="background: linear-gradient(to right, #E9006D, #BCB8F0);
+             padding: 5px 10px; font-size: 16px; white-space: normal;",
+      "Drug Use & Personality Dashboard"
+    )
+  ),
+  
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Data Distribution", tabName = "overview", icon = icon("chart-pie")),
+      menuItem("Histogram", tabName = "hist", icon = icon("chart-bar")),
+      menuItem("Boxplot", tabName = "box", icon = icon("box")),
+      menuItem("Heatmaps", tabName = "heat", icon = icon("th"))
+    ),
+    hr(),
+    h4("Histogram Controls"),
+    selectInput("facet_var", "Facet by:",
+                choices = facet_choices,
+                selected = "Gender"),
+    checkboxGroupInput("drug_type_filter_hist", "Drug Type:",
+                       choices = c("Legal","Illegal"), selected = c("Legal","Illegal")),
+    hr(),
+    h4("Boxplot Controls"),
+    selectInput("trait", "Personality Trait:", choices = personality_traits, selected = personality_traits[1]),
+    checkboxGroupInput("drug_type_filter_box", "Drug Type:",
+                       choices = c("Legal","Illegal"), selected = c("Legal","Illegal"))
+  ),
+  
+   # Main dashboard body
+  dashboardBody(
+    tabItems(
+      
+    # Data distribution overview
+      tabItem(tabName = "overview",
+              fluidRow(
+                valueBoxOutput("total_users"),
+                valueBoxOutput("total_nonusers"),
+                valueBoxOutput("total_drugs")
+              ),
+              fluidRow(
+                box(title = "Distribution Selector", width = 4, status = "primary", solidHeader = TRUE,
+                    selectInput("dist_var", "Choose variable:", 
+                                choices = dist_choices, selected = "Gender")
+                ),
+                box(title = "Pie Chart", width = 8, status = "info", solidHeader = TRUE,
+                    plotlyOutput("pie_dist", height = "350px")
+                )
+              ),
+              fluidRow(
+                box(title = "Distribution Barplot", width = 12, status = "primary", solidHeader = TRUE,
+                    plotlyOutput("dist_bar", height = "400px")
+                )
+              )
+      ),
+      
+      #  Histogram tab
+      tabItem(tabName = "hist",
+              fluidRow(
+                box(title="Drug Use Histogram", width=12, status="primary",
+                    solidHeader=TRUE, plotlyOutput("hist_plot"))
+              )
+      ),
+      
+      #  boxplot tab 
+      tabItem(tabName = "box",
+              fluidRow(
+                box(title="Personality Traits Boxplot", width=12, status="primary",
+                    solidHeader=TRUE, plotlyOutput("box_plot"))
+              )
+      ),
+      
+      #  heatmap tab 
+      tabItem(tabName = "heat",
+              fluidRow(
+                box(title="Overall Heatmap", width=12, status="primary",
+                    solidHeader=TRUE, plotOutput("heat_all", height="600px"))
+              ),
+              fluidRow(
+                box(title="Male Heatmap", width=12, status="info",
+                    solidHeader=TRUE, plotOutput("heat_male", height="600px"))
+              ),
+              fluidRow(
+                box(title="Female Heatmap", width=12, status="warning",
+                    solidHeader=TRUE, plotOutput("heat_female", height="600px"))
+              )
+      )
+    )
+  )
+)
+
+
+# server
+server <- function(input, output) {
+  
+  # Value boxes
+  output$total_users <- renderValueBox({
+    n_users <- sum(ddata_long$Use_Status %in% c("User","user","Yes","1"), na.rm = TRUE)
+    valueBox(n_users, "TOTAL USERS", icon = icon("users"), color = "fuchsia")
+  })
+  
+  output$total_nonusers <- renderValueBox({
+    n_non <- sum(!ddata_long$Use_Status %in% c("User","user","Yes","1") & !is.na(ddata_long$Use_Status), na.rm = TRUE)
+    valueBox(n_non, "TOTAL NON-USERS", icon = icon("user-slash"), color = "blue")
+  })
+  
+  output$total_drugs <- renderValueBox({
+    valueBox(length(unique(ddata_long$Drug)), "TOTAL DRUG TYPES", icon = icon("pills"), color = "purple")
+  })
+  
+  #  pie chart and boxplot
+ output$dist_bar <- renderPlotly({
+  df <- ddata %>%
+    count(.data[[input$dist_var]]) %>%
+    rename(category = 1, n = n)
+  
+  plot_title <- paste("Distribution of", gsub("_", " ", input$dist_var))
+  
+
+  my_colors <- c("#ff8ac6", "#6bb6ff", "#b38bff", "darkgreen", "orange", "red")
+  
+  p <- ggplot(df, aes(x = reorder(category, -n), y = n, fill = category)) +
+    geom_col(color = "black", show.legend = FALSE) +
+    scale_fill_manual(values = my_colors) +
+    labs(x = gsub("_", " ", input$dist_var), y = "Count", title = plot_title) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  ggplotly(p)
+})
+
+# Pie chart for demographic variable
+output$pie_dist <- renderPlotly({
+  df <- ddata %>%
+    count(.data[[input$dist_var]]) %>%
+    rename(category = 1, n = n)
+  
+  plot_title <- paste("Pie of", gsub("_", " ", input$dist_var))
+  
+
+  my_colors <- c("#ff8ac6", "#6bb6ff", "#b38bff", "darkgreen", "orange", "red")  
+  
+  plot_ly(df, labels = ~category, values = ~n, type = "pie",
+          textinfo = "label+percent", insidetextorientation = "radial",
+          marker = list(colors = my_colors)) %>%
+    layout(title = plot_title)
+})
+
+  
+  #  histogram 
+  filtered_hist <- reactive({
+    ddata_long %>% filter(Drug_Type %in% input$drug_type_filter_hist)
+  })
+  
+ output$hist_plot <- renderPlotly({
+  df <- filtered_hist() %>%
+    mutate(
+      Use_Status_Clean = gsub("_", " ", Use_Status),   # remove underscore
+      Use_Status_Clean = gsub("-", " ", Use_Status_Clean),  # also remove any hyphens
+      Use_Status_Clean = stringr::str_to_title(Use_Status_Clean)  # make nice case
+    )
+
+  p <- ggplot(df, aes(x = Drug, fill = Use_Status_Clean)) +
+    geom_bar(position="dodge", color="black") +
+    facet_wrap(as.formula(paste("~", input$facet_var))) +
+    scale_fill_manual(values=c("User"="#E9006D","Non User"="#BCB8F0")) +
+    theme_minimal(14) +
+    theme(axis.text.x = element_text(angle=45, hjust=1)) +
+    labs(x = "Drug", y = "Count", fill = "Use Status")
+
+  ggplotly(p)
+})
+
+
+  
+  #  boxplot 
+  filtered_box <- reactive({
+    ddata_long %>%
+      pivot_longer(cols = all_of(personality_traits),
+                   names_to = "Trait", values_to = "Score") %>%
+      mutate(Usage = Use_Status, Category = Drug_Type) %>%
+      filter(Trait == input$trait, Category %in% input$drug_type_filter_box)
+  })
+  
+  output$box_plot <- renderPlotly({
+    df <- filtered_box() %>% mutate(Score = as.numeric(Score))
+    p <- ggplot(df, aes(x=Usage, y=Score, fill=Usage)) +
+      geom_boxplot() +
+      facet_wrap(~Category) +
+      scale_fill_manual(values=c("User"="#E9006D","Non-User"="#BCB8F0")) +
+      theme_minimal(14)
+    ggplotly(p)
+  })
+  
+#  heatmaps
+  
+# pre-generate pheatmap objects
+heat_all_obj <- pheatmap(mat_all, cluster_rows=FALSE, cluster_cols=FALSE,
+                         labels_col=pretty_drug_labels(mat_all), color=overall_colors,
+                         angle_col=0, silent=TRUE)
+
+heat_male_obj <- pheatmap(mat_male, cluster_rows=FALSE, cluster_cols=FALSE,
+                          labels_col=pretty_drug_labels(mat_male), color=male_colors,
+                          angle_col=0, silent=TRUE)
+
+heat_female_obj <- pheatmap(mat_female, cluster_rows=FALSE, cluster_cols=FALSE,
+                            labels_col=pretty_drug_labels(mat_female), color=female_colors,
+                            angle_col=0, silent=TRUE)
+# render heatmaps
+output$heat_all <- renderPlot({
+  grid::grid.draw(heat_all_obj$gtable)
+})
+
+output$heat_male <- renderPlot({
+  grid::grid.draw(heat_male_obj$gtable)
+})
+
+output$heat_female <- renderPlot({
+  grid::grid.draw(heat_female_obj$gtable)
+})
+
+  
+}
+
+
+# RUN APP
+
+shinyApp(ui, server)
+
+```
