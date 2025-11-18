@@ -2,7 +2,6 @@
 
 
 ##Project Overview
---- 
 This project examines associations between demographic characteristics, personality traits (Big Five, impulsivity, sensation seeking), and legal/illegal drug use using the UCI Machine Learning Repository’s “Drug Consumption (Quantified)” dataset.
 
 Our goals were to:
@@ -18,7 +17,6 @@ Produce an interactive visualization dashboard using R Shiny
 This README documents the entire data-wrangling and analysis pipeline so that any new user can fully reproduce the project.
 
 ##Data Sources
----
 Raw Dataset
 
 Drug Consumption (Quantified) — UCI Machine Learning Repository
@@ -41,7 +39,6 @@ Drug use variables
 Raw categorical encodings that required recoding
 
 ##Repository Structure
----
 project/
 │
 ├── data/
@@ -61,7 +58,6 @@ project/
 └── README.md
 
 ##Software & Packages
----
 R Version
 
 R version 4.x.x
@@ -85,7 +81,7 @@ Python (format conversion only)
 
 
 ##Data Wrangling Pipeline
----
+
 This section follows the Berkeley “How to Write Good Documentation” structure and includes all steps required for full reproducibility.
 
 ###Excel Pre-Cleaning
@@ -118,6 +114,7 @@ library(dplyr)
 raw <- read_excel("data/CLEANING DATA DRUG.xlsx")
 
 ###Cleaning Pipeline in R (tidyverse)
+
 ####Handling Missing Data
 
 Identified missing values
