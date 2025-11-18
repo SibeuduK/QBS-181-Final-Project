@@ -6,132 +6,67 @@ This project examines associations between demographic characteristics, personal
 
 Our goals were to:
 
-Clean and recode the raw dataset into an analysis-ready format
-
-Generate descriptive statistics (Table 1 & Table 2)
-
-Build multivariable logistic regression models examining illegal drug use
-
-Produce an interactive visualization dashboard using R Shiny
+Clean the dataset, generate descriptive statistics (Table 1 & Table 2), build multivariable logistic regression models to examine illegal drug use, and produce an interactive visualization dashboard using R Shiny. 
 
 This README documents the entire data-wrangling and analysis pipeline so that any new user can fully reproduce the project.
 
 ## Data Sources
-Raw Dataset
-
-Drug Consumption (Quantified) — UCI Machine Learning Repository
+Dataset: Drug Consumption (Quantified) — UCI Machine Learning Repository
 
 Original format: .ARFF
 
-Converted to .csv using Python (simple format conversion, no processing)
+Converted to .csv using Python 
 
-Working Data File
+Working Data File: CLEANING DATA DRUG.xlsx
 
-CLEANING DATA DRUG.xlsx
-Contains:
-
-Demographics
-
-Personality trait scores
-
-Drug use variables
-
-Raw categorical encodings that required recoding
+Contains: Demographics, Personality trait scores, Drug use variables, Raw categorical encodings 
 
 ## Repository Structure
-project/
-│
-├── data/
-│   └── CLEANING DATA DRUG.xlsx
-│
-├── code/
-│   ├── FinalProject.Rmd
-│   ├── TABLES CODING.Rmd
-│   └── RShiny.Rmd
-│
-├── output/
-│   ├── cleaned_dataset.csv
-│   ├── Table1.csv
-│   ├── Table2.csv
-│   └── Figures/
-│
-└── README.md
+CLEANING DATA DRUG.xlsx — Dataset with standardized variable names and recoded demographic labels, used as the input for all analyses.
+FinalProject.Rmd — data import, cleaning pipeline, variable creation, regression models, and final outputs.
+TABLES CODING.Rmd — Script used to generate Table 1 and Table 2 (descriptive statistics and drug-use prevalence tables).
+RShiny.Rmd — Code for the interactive R Shiny dashboard visualizing patterns in personality traits and drug use.
+cleaned_dataset.csv — Fully processed, analysis ready dataset after cleaning.
 
 ## Software & Packages
-R Version
+R Version: R version 4.5.0
 
-R version 4.x.x
+Packages Used: tidyverse, dplyr, readxl, janitor, nnet, ggplot2, shiny, tableone, broom
 
-Packages Used
-tidyverse
-dplyr
-readxl
-janitor
-nnet
-ggplot2
-shiny
-tableone
-broom
-
-Other Tools
-
-Excel (preliminary cleaning)
-
-Python (format conversion only)
+Other Tools: Excel (for 1st cleaning), Python (format conversion)
 
 
-## Data Wrangling Pipeline
+### Excel Cleaning
 
-This section follows the Berkeley “How to Write Good Documentation” structure and includes all steps required for full reproducibility.
+- done in CLEANING DATA DRUG.xlsx
 
-### Excel Pre-Cleaning
+- standardized variable names for readability
 
-Performed in CLEANING DATA DRUG.xlsx:
+- Replaced numeric coded demographics with meaningful labels
 
-Standardized variable names for readability
+- Education categorized into Low / Medium / High
 
-Replaced numeric-coded demographics with meaningful labels
+- Removed unused variables
 
-Gender, ethnicity, country
+- Verified no duplicate participant entries
 
-Education categorized into Low / Medium / High
+- Checked for impossible values or bad entries
 
-Removed unused variables
 
-Verified no duplicate participant entries
 
-Checked for impossible values or malformed fields
-
-This produced a consistent dataset that could be imported into R cleanly.
-
-### Importing Data into R
-
-Done in FinalProject.Rmd:
-
-library(readxl)
-library(dplyr)
-
-raw <- read_excel("data/CLEANING DATA DRUG.xlsx")
-
-### Cleaning Pipeline in R (tidyverse)
+### Cleaning Pipeline in 
 
 #### Handling Missing Data
 
-Identified missing values
+ensured no missing data
 
-Converted placeholders (e.g., empty cells, “NA”) into proper NA
-
-Verified that no drug-use variable contained impossible values
+made sure no variable contained impossible values
 
 #### Recoding Variables
 
 Personality trait scores converted into Low / Medium / High categories
 
-Drug use variables dichotomized:
-
-User vs Non-user
-
-Created composite exposure variables:
+Drug use put into categories: User vs Non user
 
 Any legal drug use = caffeine OR nicotine OR alcohol OR chocolate
 
@@ -143,90 +78,50 @@ Selected only required variables
 
 Ensured factors were properly ordered
 
-Exported to /output/cleaned_dataset.csv
 
 ### Table Creation
 Table 1 — Demographic & Personality Profile by Gender
 
 Generated using tableone in TABLES CODING.Rmd
 
-Variables included:
+Variables included: Age group, Education, Ethnicity, Country, Big Five personality traits, Impulsivity, Sensation Seeking, Individual drug use variables
 
-Age group
-
-Education
-
-Ethnicity
-
-Country
-
-Big Five personality traits
-
-Impulsivity
-
-Sensation Seeking
-
-Individual drug use variables
-
-Table 2 — Any Legal/Illegal Drug Use by Age & Education
-
-Cross-tabulations
-
-Chi-square or Fisher’s exact tests when needed
+Table 2 — Legal/Illegal Drug Use by Age & Education, Chi-square, Fisher’s test
 
 ### Regression Modeling
 
-Performed in FinalProject.Rmd:
+in FinalProject.Rmd:
 
 Logistic regression predicting any illegal drug use
 
-Adjusted for:
-
-Gender
-
-Age group
-
-Education
-
-For each personality trait:
-
-Reference group = Low
+Adjusted for: Gender, Age group, Education
 
 Output ORs + 95% CI extracted into Table 3
+
 
 ### Interactive Dashboard
 
 In RShiny.Rmd:
 
-Dashboard includes:
-
-Ability to explore drug use by demographic group
-
-Personality trait distributions
-
-Prevalence of each drug
+Dashboard includes: explore drug use by demographic group, personality trait distributions, prevalence of each drug
 
 Filters for gender, age, education
 
-Run with:
+## Reproducibility 
 
-shiny::runApp("RShiny.Rmd")
+reproduce the pipeline by following:
 
-## Reproducibility Guide (Run Order)
+clone this repository
 
-A new user can fully reproduce the pipeline by following:
+place raw Excel file in data/
 
-Clone this repository
+run FinalProject.Rmd 
 
-Place raw Excel file in data/
+run TABLES CODING.Rmd to regenerate Tables 1 & 2
 
-Open FinalProject.Rmd and knit it
+run RShiny.Rmd and run the dashboard
 
-Open TABLES CODING.Rmd to regenerate Tables 1 & 2
 
-Open RShiny.Rmd and run the dashboard
-
-The cleaned dataset and tables will appear in /output.
 
 ## Contributors
 
