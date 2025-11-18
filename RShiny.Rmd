@@ -13,6 +13,7 @@ library(tidyverse)
 library(plotly)
 library(readxl)
 library(pheatmap)
+library(wordcloud2)
 
 # Read cleaned dataset from Excel
 ddata <- read_excel("CLEANING DATA DRUG.xlsx", sheet = "DATA_FINAL_ANALYSIS")
@@ -101,7 +102,9 @@ ui <- dashboardPage(
       menuItem("Data Distribution", tabName = "overview", icon = icon("chart-pie")),
       menuItem("Histogram", tabName = "hist", icon = icon("chart-bar")),
       menuItem("Boxplot", tabName = "box", icon = icon("box")),
-      menuItem("Heatmaps", tabName = "heat", icon = icon("th"))
+      menuItem("Heatmaps", tabName = "heat", icon = icon("th")),
+      menuItem("Word Cloud", tabName = "wordcloud", icon = icon("cloud")) 
+      
     ),
     hr(),
     h4("Histogram Controls"),
@@ -159,6 +162,15 @@ ui <- dashboardPage(
                     solidHeader=TRUE, plotlyOutput("box_plot"))
               )
       ),
+      
+      #wordcloud tab
+      tabItem(tabName = "wordcloud",
+              fluidRow(
+                box(title = "Drug Users Word Cloud", width = 12, status = "primary",
+                    solidHeader = TRUE, wordcloud2Output("wordcloud", height = "600px")
+                )             
+    )
+  ),
       
       #  heatmap tab 
       tabItem(tabName = "heat",
@@ -260,7 +272,19 @@ output$pie_dist <- renderPlotly({
 
   ggplotly(p)
 })
+ 
+ # wordcloud
+ output$wordcloud <- renderWordcloud2({
+  drug_user_counts <- ddata_long %>%
+    filter(Use_Status == "User") %>%
+    count(Drug, name = "freq") %>%
+    arrange(desc(freq))
 
+  wordcloud2(data = drug_user_counts,
+             size = 0.7,
+             color = rep(c("#BCB8F0", "#E9006D", "#6bb6ff"), length.out = nrow(drug_user_counts)),
+             shape = "circle")
+})
 
   
   #  boxplot 
