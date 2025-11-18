@@ -72,6 +72,17 @@ Any legal drug use = caffeine OR nicotine OR alcohol OR chocolate
 
 Any illegal drug use = cocaine OR ketamine OR heroin OR LSD
 
+Recoded age, education, and personality traits into low/ medium/ high categories.
+Education : 
+- Low: Left school before age 18
+- Medium: Technical or post secondary education
+- High: College degree or postgraduate degree
+Made binary: drug use into User vs. Non User.
+Created composite variables: legal drug use and illegal drug use.
+- Legal drugs : Caffeine, Nicotine, Alcohol, Chocolate 
+- Illegal drugs: Cocaine, Ketamine, Heroin, Lsd 
+
+
 #### Creating Final Analysis Dataset
 
 Selected only required variables
