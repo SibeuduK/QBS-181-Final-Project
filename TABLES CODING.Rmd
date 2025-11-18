@@ -1,0 +1,543 @@
+---
+title: "DRUGS_DATA_WRANGLING"
+author: "Cesar U. Alas"
+date: "2025-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+setwd("C:/Users/cesar/OneDrive/Desktop/DATA WRANGLING")
+data_drugs <- read_csv("BASE FINAL DATA DRUGS.csv")
+
+head(data_drugs) 
+names(data_drugs)
+
+
+```
+
+*GETTING READY TABLE 1*
+
+*FREQUENCIES AND PERCENTAGES BY GENDER*
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+variables <- c( # List of variables
+  "Age_Group",
+  "Education_Level_Final",
+  "Ethnicity",
+  "Country",
+  "Neuroticism_Level",
+  "Extraversion_Level",
+  "Openness_Level",
+  "Agreeableness_Level",
+  "Conscientiousness_Level",
+  "Impulsivity_Level",
+  "Sensation_Seeking_Level",
+  "Caffeine_Use", 
+  "Nicotine_Use", 
+  "Alcohol_Use",
+  "Chocolate_Use",
+  "Cocaine_Use", 
+  "Ketamine_Use", 
+  "Heroin_Use", 
+  "LSD_Use"
+)
+
+format_label <- function(var_name) {
+  text <- gsub("_", " ", var_name)
+  text <- tolower(text)
+  text <- tools::toTitleCase(text)
+  return(text)
+}
+
+for (var in variables) {
+  if (!(var %in% names(data_drugs))) {
+    message(paste("Column", var, "not found in data_drugs. Skipping."))
+    next
+  }
+  
+  var_label <- format_label(var)
+  
+  df_var <- data_drugs %>%   # Keep only Gender and the variable of interest
+    select(Gender, value = all_of(var)) %>%
+    filter(!is.na(value), !is.na(Gender))
+  
+  total_tab <- df_var %>%   # Overall totals
+    group_by(value) %>%
+    summarize(
+      Total_n = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Total_pct = round(Total_n / sum(Total_n) * 100, 1)
+    )
+  
+  gender_tab <- df_var %>%   # Totals by gender
+    group_by(Gender, value) %>%
+    summarize(
+      n = n(),
+      .groups = "drop"
+    ) %>%
+    group_by(Gender) %>%
+    mutate(
+      pct = round(n / sum(n) * 100, 1)
+    ) %>%
+    ungroup() %>%
+    pivot_wider(
+      names_from = Gender,
+      values_from = c(n, pct),
+      names_sep = "_"
+    )
+  
+  final_table <- total_tab %>%   # Merge overall and by-gender information
+    left_join(gender_tab, by = "value") %>%
+    arrange(desc(Total_n))
+  
+  colnames(final_table) <- gsub("^n_Female$", "Female_n", colnames(final_table))
+  colnames(final_table) <- gsub("^pct_Female$", "Female_pct", colnames(final_table))
+  colnames(final_table) <- gsub("^n_Male$", "Male_n", colnames(final_table))
+  colnames(final_table) <- gsub("^pct_Male$", "Male_pct", colnames(final_table))
+  
+  final_table <- final_table %>%
+    mutate(
+      Total_n  = as.integer(Total_n),
+      Female_n = as.integer(Female_n),
+      Male_n   = as.integer(Male_n)
+    )
+  
+  final_table <- final_table %>%   # Reorder columns to match the labels
+
+    select(
+      value,
+      Total_n,
+      Total_pct,
+      Female_n,
+      Female_pct,
+      Male_n,
+      Male_pct
+    )
+  
+  cat("\n\n**Variable:** ", var_label, "\n\n")
+  
+  print(
+    kable(
+      final_table,
+      col.names = c(
+        var_label,
+        "Total n",
+        "Total %",
+        "Female n",
+        "Female %",
+        "Male n",
+        "Male %"
+      ),
+      align = c("l", "r", "r", "r", "r", "r", "r"),
+      caption = paste("Frequency and percentage of", var_label, "by gender")
+    )
+  )
+}
+
+
+
+```
+
+*GETTING P VALUES TABLE 1*
+= USING CHI SQUARE, BECAUSE ALL THIS VARIABLES ARE NOMINAL CATEGORICAL, WITH MULTIPLE CATEGORIES. COMPARING BETWEEN GROUPS (MALE AND FEMALE)
+
+```{r pvalues-table1, message=FALSE, warning=FALSE}
+vars_table1 <- c(
+  "Age_Group",
+  "Education_Level_Final",
+  "Ethnicity",
+  "Country",
+  "Neuroticism_Level",
+  "Extraversion_Level",
+  "Openness_Level",
+  "Agreeableness_Level",
+  "Conscientiousness_Level",
+  "Impulsivity_Level",
+  "Sensation_Seeking_Level",
+  
+  # Legal drug use (User vs Non-user)
+  "Caffeine_Use",
+  "Nicotine_Use",
+  "Alcohol_Use",
+  "Chocolate_Use",
+  
+  # Illegal drug use (User vs Non-user)
+  "Cocaine_Use",
+  "Ketamine_Use",
+  "Heroin_Use",
+  "LSD_Use"
+)
+
+# Function / p-value for association between a variable and Gender
+compute_p <- function(var_name) {
+  
+  # Contingency table: rows = categories of var, columns = Gender
+  tab <- table(data_drugs[[var_name]], data_drugs$Gender)
+  
+  # Try chi-square test first
+  chi_try <- suppressWarnings(try(chisq.test(tab), silent = TRUE))
+  
+  # If chi-square completely fails, fall back
+  if (inherits(chi_try, "try-error")) {
+    if (nrow(tab) == 2 && ncol(tab) == 2) {
+      # 2x2 table → Fisher's exact test
+      test <- fisher.test(tab)
+      return(round(test$p.value, 4))
+    } else {
+      # Larger table → chi-square 
+      test <- chisq.test(tab, simulate.p.value = TRUE, B = 10000)
+      return(round(test$p.value, 4))
+    }
+  }
+  
+  # If chi-square worked, inspect expected counts
+  exp_counts <- chi_try$expected
+  
+  # Case 1: all expected counts >= 5 → standard chi-square
+  if (all(exp_counts >= 5)) {
+    pval <- chi_try$p.value
+    
+  # Case 2: small expected counts and 2x2 table → Fisher's exact test
+  } else if (nrow(tab) == 2 && ncol(tab) == 2) {
+    test <- fisher.test(tab)
+    pval <- test$p.value
+    
+  # Case 3: small expected counts and larger table → chi-square with simulated p-value
+  } else {
+    test <- chisq.test(tab, simulate.p.value = TRUE, B = 10000)
+    pval <- test$p.value
+  }
+  
+  return(round(pval, 4))
+}
+
+# Compute p-values for all variables in Table 1
+p_values_table1 <- data.frame(
+  Variable = vars_table1,
+  P_value  = sapply(vars_table1, compute_p)
+)
+
+p_values_table1
+```
+
+*GETTING READY TABLE 2*
+
+```{r table2-frequencies, message=FALSE, warning=FALSE}
+
+#Create composite outcomes: Any legal / Any illegal drug use
+data_drugs <- data_drugs %>%
+  mutate(
+    Any_Legal_Use = case_when(
+      rowSums(across(
+        c(Caffeine_Use, Nicotine_Use, Alcohol_Use, Chocolate_Use),
+        ~ .x == "User"
+      ), na.rm = TRUE) > 0 ~ "User",
+      rowSums(across(
+        c(Caffeine_Use, Nicotine_Use, Alcohol_Use, Chocolate_Use),
+        ~ !is.na(.x)
+      )) == 0 ~ NA_character_,
+      TRUE ~ "Non-user"
+    ),
+    Any_Illegal_Use = case_when(
+      rowSums(across(
+        c(Cocaine_Use, Ketamine_Use, Heroin_Use, LSD_Use),
+        ~ .x == "User"
+      ), na.rm = TRUE) > 0 ~ "User",
+      rowSums(across(
+        c(Cocaine_Use, Ketamine_Use, Heroin_Use, LSD_Use),
+        ~ !is.na(.x)
+      )) == 0 ~ NA_character_,
+      TRUE ~ "Non-user"
+    )
+  )
+
+#Table by Age group
+table2_age <- data_drugs %>%
+  filter(!is.na(Age_Group)) %>%
+  group_by(Age_Group) %>%
+  summarise(
+    n = n(),
+    Any_Legal_User_n   = sum(Any_Legal_Use == "User", na.rm = TRUE),
+    Any_Legal_User_pct = round(Any_Legal_User_n / n * 100, 1),
+    Any_Illegal_User_n   = sum(Any_Illegal_Use == "User", na.rm = TRUE),
+    Any_Illegal_User_pct = round(Any_Illegal_User_n / n * 100, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(Age_Group)
+
+kable(
+  table2_age,
+  col.names = c(
+    "Age group",
+    "n",
+    "Any legal drug use n",
+    "Any legal drug use (%)",
+    "Any illegal drug use n",
+    "Any illegal drug use (%)"
+  ),
+  align = c("l", "r", "r", "r", "r", "r"),
+  caption = "Prevalence of any legal and illegal drug use by age group"
+)
+
+#Table by Education level
+table2_edu <- data_drugs %>%
+  filter(!is.na(Education_Level_Final)) %>%
+  group_by(Education_Level_Final) %>%
+  summarise(
+    n = n(),
+    Any_Legal_User_n   = sum(Any_Legal_Use == "User", na.rm = TRUE),
+    Any_Legal_User_pct = round(Any_Legal_User_n / n * 100, 1),
+    Any_Illegal_User_n   = sum(Any_Illegal_Use == "User", na.rm = TRUE),
+    Any_Illegal_User_pct = round(Any_Illegal_User_n / n * 100, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(Education_Level_Final)
+
+kable(
+  table2_edu,
+  col.names = c(
+    "Education level",
+    "n",
+    "Any legal drug use n",
+    "Any legal drug use (%)",
+    "Any illegal drug use n",
+    "Any illegal drug use (%)"
+  ),
+  align = c("l", "r", "r", "r", "r", "r"),
+  caption = "Prevalence of any legal and illegal drug use by education level"
+)
+```
+
+
+*GETTING P VALUES TABLE 2*
+
+```{r table2-pvalues, message=FALSE, warning=FALSE}
+
+compute_p_assoc <- function(predictor, outcome) {
+  
+  tab <- table(data_drugs[[predictor]], data_drugs[[outcome]])
+  
+  # Try chi-square first
+  chi_try <- suppressWarnings(try(chisq.test(tab), silent = TRUE))
+  
+  # If chi-square completely fails, use chi-square
+  if (inherits(chi_try, "try-error")) {
+    test <- chisq.test(tab, simulate.p.value = TRUE, B = 10000)
+    return(round(test$p.value, 4))
+  }
+  
+  exp_counts <- chi_try$expected
+  
+  # All expected counts >= 5 → standard chi-square
+  if (all(exp_counts >= 5)) {
+    pval <- chi_try$p.value
+    
+  # Small expected counts and 2x2 table → Fisher
+  } else if (nrow(tab) == 2 && ncol(tab) == 2) {
+    pval <- fisher.test(tab)$p.value
+    
+  # Small expected counts and larger table → chi-square 
+  } else {
+    pval <- chisq.test(tab, simulate.p.value = TRUE, B = 10000)$p.value
+  }
+  
+  round(pval, 4)
+}
+
+# Define the four associations of interest
+p_table2 <- data.frame(
+  Predictor = c("Age_Group", "Age_Group",
+                "Education_Level_Final", "Education_Level_Final"),
+  Outcome   = c("Any_Legal_Use", "Any_Illegal_Use",
+                "Any_Legal_Use", "Any_Illegal_Use")
+) %>%
+  mutate(
+    P_value = mapply(compute_p_assoc, Predictor, Outcome),
+    Predictor = dplyr::recode(Predictor,
+                              "Age_Group" = "Age group",
+                              "Education_Level_Final" = "Education level"),
+    Outcome = dplyr::recode(Outcome,
+                            "Any_Legal_Use"   = "Any legal drug use",
+                            "Any_Illegal_Use" = "Any illegal drug use")
+  )
+
+# Show table with p-values
+kable(
+  p_table2,
+  col.names = c("Characteristic", "Outcome", "P value"),
+  align = c("l", "l", "r"),
+  caption = "P values for the association between age, education and any legal/illegal drug use"
+)
+
+```
+
+
+*TABLE 3*
+
+```{r}
+# Ensure outcome is a factor with "Non-user" 
+data_drugs$Any_Illegal_Use_bin <- factor(
+  ifelse(data_drugs$Any_Illegal_Use == "User", "User", "Non-user"),
+  levels = c("Non-user", "User")
+)
+
+# Ensure Sensation Seeking Level has "Low" as reference
+data_drugs$Sensation_Seeking_Level <- factor(
+  data_drugs$Sensation_Seeking_Level,
+  levels = c("Low", "Medium", "High")
+)
+
+model_crude <- glm(
+  Any_Illegal_Use_bin ~ Sensation_Seeking_Level,
+  data = data_drugs,
+  family = binomial
+)
+
+model_adj <- glm(
+  Any_Illegal_Use_bin ~ Sensation_Seeking_Level + Gender + Age_Group + Education_Level_Final,
+  data = data_drugs,
+  family = binomial
+)
+
+extract_or <- function(model) {
+  est <- coef(model)
+  se  <- sqrt(diag(vcov(model)))
+  or  <- exp(est)
+  lower <- exp(est - 1.96 * se)
+  upper <- exp(est + 1.96 * se)
+  out <- data.frame(
+    Term = names(est),
+    OR = round(or, 2),
+    CI_lower = round(lower, 2),
+    CI_upper = round(upper, 2),
+    row.names = NULL
+  )
+  out
+}
+
+or_crude <- extract_or(model_crude)
+or_adj   <- extract_or(model_adj)
+
+or_crude
+or_adj
+
+
+```
+
+```{r logistic-any-illegal-all-traits, message=FALSE, warning=FALSE}
+#Make sure outcome is binary factor 
+data_drugs$Any_Illegal_Use_bin <- factor(
+  ifelse(data_drugs$Any_Illegal_Use == "User", "User", "Non-user"),
+  levels = c("Non-user", "User")
+)
+
+#Set references for covariates
+data_drugs$Gender <- factor(data_drugs$Gender,
+                            levels = c("Female", "Male"))
+
+data_drugs$Age_Group <- factor(
+  data_drugs$Age_Group,
+  levels = c("18–24 years",
+             "25–34 years",
+             "35–44 years",
+             "45–54 years",
+             "55–64 years",
+             "65+ years")
+)
+
+data_drugs$Education_Level_Final <- factor(
+  data_drugs$Education_Level_Final,
+  levels = c("High education", "Medium education", "Low education")
+)
+
+#Vector of personality level variables
+trait_vars <- c(
+  "Neuroticism_Level",
+  "Extraversion_Level",
+  "Openness_Level",
+  "Agreeableness_Level",
+  "Conscientiousness_Level",
+  "Impulsivity_Level",
+  "Sensation_Seeking_Level"
+)
+
+# Helper function to fit model and extract adjusted ORs for one trait
+fit_trait_model <- function(trait_var) {
+  
+  # Ensure trait levels are ordered: Low (ref), Medium, High
+  data_drugs[[trait_var]] <- factor(
+    data_drugs[[trait_var]],
+    levels = c("Low", "Medium", "High")
+  )
+  
+  form <- as.formula(
+    paste("Any_Illegal_Use_bin ~", trait_var,
+          "+ Gender + Age_Group + Education_Level_Final")
+  )
+  
+  model <- glm(form, data = data_drugs, family = binomial)
+  
+  # Extract coefficients and compute OR and 95% CI
+  est <- coef(model)
+  se  <- sqrt(diag(vcov(model)))
+  or  <- exp(est)
+  lower <- exp(est - 1.96 * se)
+  upper <- exp(est + 1.96 * se)
+  
+  df <- data.frame(
+    Term = names(est),
+    OR = or,
+    CI_lower = lower,
+    CI_upper = upper,
+    row.names = NULL
+  )
+  
+  # Keep only Medium and High levels of the trait
+  df_trait <- df %>%
+    dplyr::filter(grepl(trait_var, Term)) %>%
+    mutate(
+      Trait = trait_var,
+      Level = ifelse(grepl("Medium", Term), "Medium", "High")
+    ) %>%
+    select(Trait, Level, OR, CI_lower, CI_upper)
+  
+  df_trait
+}
+
+# Apply to all traits and bind rows
+results_traits <- trait_vars %>%
+  lapply(fit_trait_model) %>%
+  bind_rows() %>%
+  # Round for presentation
+  mutate(
+    OR = round(OR, 2),
+    CI_lower = round(CI_lower, 2),
+    CI_upper = round(CI_upper, 2),
+    Trait = dplyr::recode(Trait,
+      "Neuroticism_Level" = "Neuroticism",
+      "Extraversion_Level" = "Extraversion",
+      "Openness_Level" = "Openness",
+      "Agreeableness_Level" = "Agreeableness",
+      "Conscientiousness_Level" = "Conscientiousness",
+      "Impulsivity_Level" = "Impulsivity",
+      "Sensation_Seeking_Level" = "Sensation seeking"
+    )
+  ) %>%
+  arrange(Trait, Level)
+
+results_traits
+
+
+```
+
