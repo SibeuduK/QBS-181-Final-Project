@@ -1,0 +1,227 @@
+---
+title: "TheDruggies"
+author: "Kenechukwu Sibeudu"
+date: "2025-11-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("readxl")  
+library(readxl)
+library(ggpubr)
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(pheatmap)
+library(ggplot2)
+
+```
+
+```{r}
+ddata <- read_excel("CLEANING DATA DRUG.xlsx", sheet = "DATA_FINAL_ANALYSIS")
+head(ddata)
+```
+
+```{r}
+legal_drugs <- c("Caffeine_Use", "Nicotine_Use", "Alcohol_Use", "Chocolate_Use")
+illegal_drugs <- c("Cocaine_Use", "Ketamine_Use", "Heroin_Use", "LSD_Use")
+all_drugs <- c(legal_drugs, illegal_drugs)
+
+# Gather legal and illegal drugs together with a flag
+ddata_long <- ddata %>%
+pivot_longer(
+cols = all_of(all_drugs),
+names_to = "Drug",
+values_to = "Usage"
+) %>%
+mutate(
+Category = ifelse(Drug %in% legal_drugs, "Legal", "Illegal"),
+Drug_clean = str_remove(Drug, "_Use"), 
+AgeEdu = paste(Age_Group, Education_Level_Final, sep = " / ") # used in heatmap
+)
+
+```
+
+
+```{r}
+# Function to plot personality trait by usage and separate by Legal/Illegal category
+plot_personality_trait <- function(data, trait, fill_colors = c("#BCB8F0", "#E9006D")) {
+  y_label <- paste(gsub("_", " ", trait), "Score")
+  
+  ggplot(data, aes_string(x = "Usage", y = trait, fill = "Usage")) +
+    geom_boxplot() +
+    facet_wrap(~Category) +
+    scale_fill_manual(values = fill_colors) +
+    labs(
+      x = "",
+      y = y_label,
+      fill = "Usage"
+    ) +
+    guides(fill = "none") +
+    theme_classic()
+}
+
+# Create the plots
+neuro_boxplot <- plot_personality_trait(ddata_long, "Neuroticism")
+extraversion_boxplot <- plot_personality_trait(ddata_long, "Extraversion")
+openness_boxplot <- plot_personality_trait(ddata_long, "Openness")
+agreeableness_boxplot <- plot_personality_trait(ddata_long, "Agreeableness")
+consc_boxplot <- plot_personality_trait(ddata_long, "Conscientiousness")
+impulsivity_boxplot <- plot_personality_trait(ddata_long, "Impulsivity")
+SS_boxplot <- plot_personality_trait(ddata_long, "Sensation_Seeking")
+
+
+# Arrange the plots in a 2x2 grid
+combined_plot <- ggarrange(neuro_boxplot, extraversion_boxplot, openness_boxplot, agreeableness_boxplot,
+                           ncol = 2, nrow = 2)
+combined_plot2 <- ggarrange(consc_boxplot, impulsivity_boxplot, SS_boxplot,
+          ncol = 2, nrow = 2)
+
+
+# Add one common title above all plots
+annotate_figure(combined_plot, 
+                top = text_grob("Personality Traits by Drug Use for Legal and Illegal Drugs",
+                                face = "bold", size = 14))
+
+annotate_figure(combined_plot2, 
+                top = text_grob("Personality Traits by Drug Use for Legal and Illegal Drugs",
+                                face = "bold", size = 14))
+```
+
+```{r}
+#only users
+d_long <- ddata_long %>%
+filter(Usage == "User")
+
+#clean labels 
+pretty_drug_labels <- function(mat) {
+labs <- colnames(mat)
+labs <- gsub("*_Use$", "", labs)
+labs <- gsub("*", " ", labs)
+labs}
+
+
+overall_colors <- colorRampPalette(c("white", "red"))(50)
+male_colors    <- colorRampPalette(c("white", "yellow"))(50)
+female_colors  <- colorRampPalette(c("white", "blue"))(50)
+
+# overall 
+all_tab <- d_long %>%
+count(AgeEdu, Drug, name = "Users") %>%
+pivot_wider(
+names_from  = Drug,
+values_from = Users,
+values_fill = 0
+)
+
+mat_all <- as.matrix(all_tab[, -1])
+rownames(mat_all) <- all_tab$AgeEdu
+
+pheatmap(
+mat_all,
+main = "Drug Use by Age + Education (All)",
+cluster_rows = FALSE,
+cluster_cols = FALSE,
+labels_col = pretty_drug_labels(mat_all),
+color = overall_colors
+)
+
+# male
+male_tab <- d_long %>%
+filter(Gender == "Male") %>%
+count(AgeEdu, Drug, name = "Users") %>%
+pivot_wider(
+names_from  = Drug,
+values_from = Users,
+values_fill = 0
+)
+
+mat_male <- as.matrix(male_tab[, -1])
+rownames(mat_male) <- male_tab$AgeEdu
+
+pheatmap(
+mat_male,
+main = "Drug Use by Age + Education (Male)",
+cluster_rows = FALSE,
+cluster_cols = FALSE,
+labels_col = pretty_drug_labels(mat_male),
+color = male_colors
+)
+
+# female
+female_tab <- d_long %>%
+filter(Gender == "Female") %>%
+count(AgeEdu, Drug, name = "Users") %>%
+pivot_wider(
+names_from  = Drug,
+values_from = Users,
+values_fill = 0
+)
+
+mat_female <- as.matrix(female_tab[, -1])
+rownames(mat_female) <- female_tab$AgeEdu
+
+pheatmap(
+mat_female,
+main = "Drug Use by Age + Education (Female)",
+cluster_rows = FALSE,
+cluster_cols = FALSE,
+labels_col = pretty_drug_labels(mat_female),
+color = female_colors
+)
+
+
+```
+
+
+```{r}
+# reorder education
+ddata_long$Education_Level_Final <- factor(
+  ddata_long$Education_Level_Final,
+  levels = c("Low education", "Medium education", "High education")
+)
+
+
+#histogram by gender
+ggplot(ddata_long, aes(x = Drug_clean, fill = Usage)) +
+geom_bar(position = "dodge", color = "black") +
+facet_wrap(~ Gender) +
+scale_fill_manual(
+values = c("User" = "#E9006D", "Non-User" = "#BCB8F0")) +
+labs(title = "Drug Use by Gender",
+x = "Drug Type",
+y = "Number of Individuals",
+fill = "Use Status") +
+theme_minimal(base_size = 14) +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# histogram by education
+ggplot(ddata_long, aes(x = Drug_clean, fill = Usage)) +
+geom_bar(position = "dodge", color = "black") +
+facet_wrap(~ Education_Level_Final) +
+scale_fill_manual(
+values = c("User" = "#E9006D", "Non-User" = "#BCB8F0")
+) + labs(title = "Drug Use by Education Level",
+x = "Drug Type",
+y = "Number of Individuals",
+fill = "Use Status") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#histogram by age 
+ggplot(ddata_long, aes(x = Drug_clean, fill = Usage)) +
+geom_bar(position = "dodge", color = "black") +
+facet_wrap(~ Age_Group) +
+scale_fill_manual(
+values = c("User" = "#E9006D", "Non-User" = "#BCB8F0")) +
+labs(title = "Drug Use by Age Group",
+x = "Drug Type",
+y = "Number of Individuals",
+fill = "Use Status") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
