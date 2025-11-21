@@ -85,6 +85,12 @@ TABLES CODING.Rmd: This file loads and cleans the drug-use dataset, generates de
 
 TABLES PROJECT.docx: Tables 1,2 and 3 output from TABLES CODING.Rmd
 
+## Contributors
+Tanya Budhiraja
+Cami Diehl
+Cesar Alas Pineda
+Kenechukwu Sibeudu
+
 ## Software & Packages
 R Version: R version 4.5.0
 
